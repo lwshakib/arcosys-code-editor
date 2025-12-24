@@ -28,6 +28,11 @@ let win: BrowserWindow | null
 
 function createWindow() {
   win = new BrowserWindow({
+    title: 'ArcoSys Code Editor',
+    width: 1200,
+    height: 720,
+    frame: false,
+    backgroundColor: '#232A35',
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
