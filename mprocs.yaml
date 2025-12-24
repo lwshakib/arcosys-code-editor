@@ -1,0 +1,11 @@
+procs:
+  arcosys-web:
+    shell: "cd arcosys-web && bun run arcosys:web"
+    autoRestart: true
+
+  arcosys-editor:
+    shell: "cd arcosys-editor && bun run arcosys:editor"
+    autoRestart: true
+  # arcosys-cli:
+  #   shell: "cd arcosys-cli && bun run arcosys:cli"
+  #   autoRestart: true
