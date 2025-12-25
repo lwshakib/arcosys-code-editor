@@ -268,6 +268,19 @@ function App() {
     setOpenMenu(openMenu === menu ? null : menu);
   };
 
+  // Window control handlers
+  const handleMinimize = () => {
+    window.ipcRenderer.send("window:minimize");
+  };
+
+  const handleMaximize = () => {
+    window.ipcRenderer.send("window:maximize");
+  };
+
+  const handleClose = () => {
+    window.ipcRenderer.send("window:close");
+  };
+
   return (
     <div className="h-screen w-screen flex flex-col bg-[#232A35] text-[#cccccc] overflow-hidden">
       {/* Header */}
@@ -645,13 +658,22 @@ function App() {
 
           {/* Window Controls */}
           <div className="flex items-center ml-2">
-            <button className="p-1 hover:bg-[#2a3441] w-11 h-8 flex items-center justify-center">
+            <button
+              className="p-1 hover:bg-[#2a3441] w-11 h-8 flex items-center justify-center"
+              onClick={handleMinimize}
+            >
               <VscChromeMinimize className="w-3 h-3" />
             </button>
-            <button className="p-1 hover:bg-[#2a3441] w-11 h-8 flex items-center justify-center">
+            <button
+              className="p-1 hover:bg-[#2a3441] w-11 h-8 flex items-center justify-center"
+              onClick={handleMaximize}
+            >
               <VscChromeMaximize className="w-3 h-3" />
             </button>
-            <button className="p-1 hover:bg-[#e81123] hover:text-white w-11 h-8 flex items-center justify-center">
+            <button
+              className="p-1 hover:bg-[#e81123] hover:text-white w-11 h-8 flex items-center justify-center"
+              onClick={handleClose}
+            >
               <VscChromeClose className="w-3 h-3" />
             </button>
           </div>

@@ -404,6 +404,29 @@ ipcMain.on("terminal:resize", (_, { cols, rows }) => {
   }
 });
 
+// Window control handlers
+ipcMain.on("window:minimize", () => {
+  if (win) {
+    win.minimize();
+  }
+});
+
+ipcMain.on("window:maximize", () => {
+  if (win) {
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+  }
+});
+
+ipcMain.on("window:close", () => {
+  if (win) {
+    win.close();
+  }
+});
+
 app.whenReady().then(createWindow);
 
 app.on("window-all-closed", () => {
