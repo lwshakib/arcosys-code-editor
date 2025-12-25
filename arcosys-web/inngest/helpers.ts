@@ -2,7 +2,7 @@ import { PINECONE_INDEX } from "@/lib/env";
 import { Octokit } from "@octokit/rest";
 import { Pinecone as PineconeClient } from "@pinecone-database/pinecone";
 import { embed } from "ai";
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
 import prisma from "@/lib/prisma";
 import { inngest } from "./client";
 
@@ -16,7 +16,9 @@ export const pineconeIndex = pinecone.Index(PINECONE_INDEX!);
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   const { embedding } = await embed({
-    model: google.textEmbeddingModel("text-embedding-004"),
+    model: createGoogleGenerativeAI({
+      apiKey: process.env.GOOGLE_API_KEY,
+    }).textEmbeddingModel("text-embedding-004"),
     value: text,
   });
 
@@ -202,58 +204,85 @@ export async function reviewPullRequest(
   repo: string,
   prNumber: number
 ) {
-  const repository = await prisma.repository.findFirst({
-    where: {
-      owner,
-      name: repo,
-    },
-    include: {
-      user: {
-        include: {
-          accounts: {
-            where: {
-              providerId: "github",
+  try {
+    const repository = await prisma.repository.findFirst({
+      where: {
+        owner,
+        name: repo,
+      },
+      include: {
+        user: {
+          include: {
+            accounts: {
+              where: {
+                providerId: "github",
+              },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  if (!repository) {
-    throw new Error(
-      `Repository ${owner}/${repo} not found in database. Please reconnect.`
-    );
-  }
+    if (!repository) {
+      throw new Error(
+        `Repository ${owner}/${repo} not found in database. Please reconnect.`
+      );
+    }
 
-  const githubAccount = repository.user.accounts[0];
+    const githubAccount = repository.user.accounts[0];
 
-  const token = githubAccount.accessToken;
-  if (!token) {
-    throw new Error("GitHub access token not found");
-  }
-  const { title, diff, description } = await getPullRequestDiff(
-    token,
-    owner,
-    repo,
-    prNumber
-  );
-
-  await inngest.send({
-    name: "pr.review.requested",
-    data: {
+    const token = githubAccount.accessToken;
+    if (!token) {
+      throw new Error("GitHub access token not found");
+    }
+    const { title, diff, description } = await getPullRequestDiff(
+      token,
       owner,
       repo,
-      prNumber,
-      userId: repository.user.id,
-    },
-  });
+      prNumber
+    );
 
-  return {
-    success: true,
-    message: "Review queued",
-  };
+    await inngest.send({
+      name: "pr.review.requested",
+      data: {
+        owner,
+        repository: repo,
+        prNumber,
+        userId: repository.user.id,
+      },
+    });
 
+    return {
+      success: true,
+      message: "Review queued",
+    };
+  } catch (error) {
+    try {
+      const repository = await prisma.repository.findFirst({
+        where: {
+          owner,
+          name: repo,
+        },
+      });
+
+      if (repository) {
+        await prisma.review.create({
+          data: {
+            repositoryId: repository.id,
+            prNumber,
+            prTitle: "Failed to fetch PR",
+            prUrl: `https://github.com/${owner}/${repo}/pull/${prNumber}`,
+            review: String(error),
+            status: "failed",
+          },
+        });
+      }
+    } catch (dbError) {
+      console.error("Failed to record review failure:", dbError);
+    }
+
+    throw error;
+  }
 }
 
 export async function getPullRequestDiff(
@@ -286,4 +315,77 @@ export async function getPullRequestDiff(
     diff: diff,
     description: pullRequest.body,
   };
+}
+
+/**
+ * Posts a comment to a GitHub pull request.
+ *
+ * @param token - GitHub access token
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param prNumber - PR number
+ * @param comment - Comment content in Markdown
+ */
+export async function postPullRequestComment(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  comment: string
+) {
+  const octokit = new Octokit({
+    auth: token,
+  });
+
+  await octokit.issues.createComment({
+    owner,
+    repo,
+    issue_number: prNumber,
+    body: comment,
+  });
+}
+
+/**
+ * Creates a webhook in the specified GitHub repository.
+ *
+ * @param token - GitHub access token
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ */
+export async function createGithubWebhook(
+  token: string,
+  owner: string,
+  repo: string
+) {
+  const octokit = new Octokit({
+    auth: token,
+  });
+
+  // The URL where GitHub will send events.
+  const baseUrl = "https://4526f940c00d.ngrok-free.app";
+  const webhookUrl = `${baseUrl}/api/webhooks/github`;
+
+  try {
+    await octokit.repos.createWebhook({
+      owner,
+      repo,
+      config: {
+        url: webhookUrl,
+        content_type: "json",
+        insecure_ssl: "0",
+        // secret: process.env.GITHUB_WEBHOOK_SECRET // Add this if you want to verify signatures
+      },
+      events: ["pull_request", "push", "ping"],
+      active: true,
+    });
+    console.log(`Webhook created for ${owner}/${repo}`);
+  } catch (error: any) {
+    // If webhook already exists, GitHub returns 422
+    if (error.status === 422) {
+      console.log(`Webhook already exists for ${owner}/${repo}`);
+    } else {
+      console.error(`Failed to create webhook for ${owner}/${repo}`, error);
+      throw error;
+    }
+  }
 }

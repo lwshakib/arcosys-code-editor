@@ -6,6 +6,10 @@ procs:
     shell: "npx --ignore-scripts=false inngest-cli@1.15.1 dev" 
     autoRestart: true
 
+  ngrok:
+    shell: "ngrok http 3000"
+    autoRestart: true
+
   # arcosys-editor:
   #   shell: "cd arcosys-editor && bun run arcosys:editor"
   #   autoRestart: true
