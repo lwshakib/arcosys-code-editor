@@ -102,7 +102,7 @@ export default async function ReviewDetailPage({
 
               <div className="relative">
                 <div className="flex items-center gap-4 mb-10 pb-6 border-b border-white/5">
-                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-primary to-primary/50 flex items-center justify-center shadow-lg shadow-primary/20">
+                  <div className="h-12 w-12 rounded-2xl bg-linear-to-tr from-primary to-primary/50 flex items-center justify-center shadow-lg shadow-primary/20">
                     <IconMessage className="h-6 w-6 text-white" />
                   </div>
                   <div>

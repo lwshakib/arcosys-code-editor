@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   IconCamera,
-
   IconDashboard,
   IconDatabase,
   IconFileAi,
@@ -113,7 +112,7 @@ const data = {
   navSecondary: [
     {
       title: "Settings",
-      url: "#",
+      url: "/settings",
       icon: IconSettings,
     },
     {

@@ -8,11 +8,11 @@ import {
   IconUserCircle,
   IconBrandGithub,
   IconBrandGoogle,
+  IconCheck,
 } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-
 import { authClient } from "@/lib/auth-client";
-
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -29,10 +29,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useListAccounts } from "@/lib/auth-hooks";
 
 export function NavUser() {
   const { isMobile } = useSidebar();
   const { data: session, isPending } = authClient.useSession();
+  const { data: accounts } = useListAccounts();
   const router = useRouter();
 
   if (isPending) {
@@ -99,9 +101,11 @@ export function NavUser() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <IconUserCircle />
-                Account
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <IconUserCircle />
+                  Account
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconCreditCard />
@@ -117,28 +121,61 @@ export function NavUser() {
               <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1">
                 Connections
               </DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={async () => {
-                  await authClient.signIn.social({
-                    provider: "github",
-                    callbackURL: window.location.href,
-                  });
-                }}
-              >
-                <IconBrandGithub />
-                Connect GitHub
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={async () => {
-                  await authClient.signIn.social({
-                    provider: "google",
-                    callbackURL: window.location.href,
-                  });
-                }}
-              >
-                <IconBrandGoogle />
-                Connect Google
-              </DropdownMenuItem>
+              {(() => {
+                const githubAccount = accounts?.find(
+                  (a) => a.providerId === "github"
+                );
+                const googleAccount = accounts?.find(
+                  (a) => a.providerId === "google"
+                );
+
+                return (
+                  <>
+                    <DropdownMenuItem
+                      disabled={!!githubAccount}
+                      onClick={
+                        githubAccount
+                          ? undefined
+                          : async () => {
+                              await authClient.signIn.social({
+                                provider: "github",
+                                callbackURL: window.location.href,
+                              });
+                            }
+                      }
+                    >
+                      <IconBrandGithub
+                        className={githubAccount ? "text-green-500" : ""}
+                      />
+                      {githubAccount ? "Connected to GitHub" : "Connect GitHub"}
+                      {githubAccount && (
+                        <IconCheck className="ml-auto size-4 text-green-500" />
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!!googleAccount}
+                      onClick={
+                        googleAccount
+                          ? undefined
+                          : async () => {
+                              await authClient.signIn.social({
+                                provider: "google",
+                                callbackURL: window.location.href,
+                              });
+                            }
+                      }
+                    >
+                      <IconBrandGoogle
+                        className={googleAccount ? "text-green-500" : ""}
+                      />
+                      {googleAccount ? "Connected to Google" : "Connect Google"}
+                      {googleAccount && (
+                        <IconCheck className="ml-auto size-4 text-green-500" />
+                      )}
+                    </DropdownMenuItem>
+                  </>
+                );
+              })()}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
