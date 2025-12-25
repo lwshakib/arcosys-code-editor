@@ -1,11 +1,12 @@
 procs:
   arcosys-web:
-    shell: "cd arcosys-web && bun run arcosys:web"
+    shell: "cd arcosys-web && bun run dev"
+    autoRestart: true
+  inngest:
+    shell: "npx --ignore-scripts=false inngest-cli@1.15.1 dev" 
     autoRestart: true
 
-  arcosys-editor:
-    shell: "cd arcosys-editor && bun run arcosys:editor"
-    autoRestart: true
-  # arcosys-cli:
-  #   shell: "cd arcosys-cli && bun run arcosys:cli"
+  # arcosys-editor:
+  #   shell: "cd arcosys-editor && bun run arcosys:editor"
   #   autoRestart: true
+
