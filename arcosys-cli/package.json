@@ -1,12 +1,12 @@
 {
   "name": "arcosys",
-  "module": "index.ts",
+  "module": "bin/arcosys.ts",
   "bin": {
-    "arcosys": "index.ts"
+    "arcosys": "bin/arcosys.ts"
   },
   "type": "module",
   "scripts": {
-    "wakeup": "bun run index.ts wakeup"
+    "wakeup": "bun run bin/arcosys.ts wakeup"
   },
   "devDependencies": {
     "@types/bun": "latest"
