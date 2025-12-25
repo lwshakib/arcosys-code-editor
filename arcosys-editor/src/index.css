@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+.draggable-area {
+  -webkit-app-region: drag;
+}
+
+.non-draggable-area {
+  -webkit-app-region: no-drag;
+}
