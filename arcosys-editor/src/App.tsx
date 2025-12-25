@@ -27,6 +27,8 @@ function App() {
   const [rightSidebarWidth, setRightSidebarWidth] = useState(320); // 320px = w-80
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
+  const [terminalHeight, setTerminalHeight] = useState(250);
+  const [isResizingTerminal, setIsResizingTerminal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Min and max widths
@@ -35,6 +37,17 @@ function App() {
 
   // Dropdown menu state
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  // Active view state (explorer or search)
+  const [activeView, setActiveView] = useState<"explorer" | "search">(
+    "explorer"
+  );
+
+  // Root folder path for search
+  const [rootFolderPath, setRootFolderPath] = useState<string | null>(null);
+
+  // Terminal state
+  const [showTerminal, setShowTerminal] = useState(false);
 
   const handleFileClick = async (file: FileNode) => {
     // 1. Add to openFiles if not already there
@@ -58,10 +71,6 @@ function App() {
         }));
       }
     }
-  };
-
-  const handleTabClick = (file: FileNode) => {
-    setActiveFile(file);
   };
 
   const handleCloseTab = (e: React.MouseEvent, path: string) => {
@@ -177,22 +186,49 @@ function App() {
     setIsResizingRight(false);
   }, []);
 
+  // Resize handlers for terminal
+  const handleTerminalMouseDown = useCallback(() => {
+    setIsResizingTerminal(true);
+  }, []);
+
+  const handleTerminalMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isResizingTerminal || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newHeight = containerRect.bottom - e.clientY;
+
+      if (newHeight >= 100 && newHeight <= 600) {
+        setTerminalHeight(newHeight);
+      }
+    },
+    [isResizingTerminal]
+  );
+
+  const handleTerminalMouseUp = useCallback(() => {
+    setIsResizingTerminal(false);
+  }, []);
+
   // Global mouse event listeners
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       handleLeftMouseMove(e);
       handleRightMouseMove(e);
+      handleTerminalMouseMove(e);
     };
 
     const handleMouseUp = () => {
       handleLeftMouseUp();
       handleRightMouseUp();
+      handleTerminalMouseUp();
     };
 
-    if (isResizingLeft || isResizingRight) {
+    if (isResizingLeft || isResizingRight || isResizingTerminal) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
+      document.body.style.cursor = isResizingTerminal
+        ? "row-resize"
+        : "col-resize";
       document.body.style.userSelect = "none";
 
       return () => {
@@ -203,12 +239,13 @@ function App() {
       };
     }
   }, [
-    isResizingLeft,
-    isResizingRight,
+    isResizingTerminal,
     handleLeftMouseMove,
     handleRightMouseMove,
+    handleTerminalMouseMove,
     handleLeftMouseUp,
     handleRightMouseUp,
+    handleTerminalMouseUp,
   ]);
 
   // Close dropdown menus when clicking outside
@@ -244,7 +281,7 @@ function App() {
             {/* File Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("file");
@@ -253,36 +290,36 @@ function App() {
                 File
               </span>
               {openMenu === "file" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>New File</span>
-                      <span className="text-[#858585]">Ctrl+N</span>
+                      <span className="text-[#7a8a9e]">Ctrl+N</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>New Window</span>
-                      <span className="text-[#858585]">Ctrl+Shift+N</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+N</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Open File...</span>
-                      <span className="text-[#858585]">Ctrl+O</span>
+                      <span className="text-[#7a8a9e]">Ctrl+O</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Open Folder...</span>
-                      <span className="text-[#858585]">Ctrl+K Ctrl+O</span>
+                      <span className="text-[#7a8a9e]">Ctrl+K Ctrl+O</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Save</span>
-                      <span className="text-[#858585]">Ctrl+S</span>
+                      <span className="text-[#7a8a9e]">Ctrl+S</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Save As...</span>
-                      <span className="text-[#858585]">Ctrl+Shift+S</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+S</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Exit</span>
                     </div>
                   </div>
@@ -293,7 +330,7 @@ function App() {
             {/* Edit Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("edit");
@@ -302,37 +339,37 @@ function App() {
                 Edit
               </span>
               {openMenu === "edit" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Undo</span>
-                      <span className="text-[#858585]">Ctrl+Z</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Z</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Redo</span>
-                      <span className="text-[#858585]">Ctrl+Y</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Y</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Cut</span>
-                      <span className="text-[#858585]">Ctrl+X</span>
+                      <span className="text-[#7a8a9e]">Ctrl+X</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Copy</span>
-                      <span className="text-[#858585]">Ctrl+C</span>
+                      <span className="text-[#7a8a9e]">Ctrl+C</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Paste</span>
-                      <span className="text-[#858585]">Ctrl+V</span>
+                      <span className="text-[#7a8a9e]">Ctrl+V</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Find</span>
-                      <span className="text-[#858585]">Ctrl+F</span>
+                      <span className="text-[#7a8a9e]">Ctrl+F</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Replace</span>
-                      <span className="text-[#858585]">Ctrl+H</span>
+                      <span className="text-[#7a8a9e]">Ctrl+H</span>
                     </div>
                   </div>
                 </div>
@@ -342,7 +379,7 @@ function App() {
             {/* Selection Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("selection");
@@ -351,28 +388,28 @@ function App() {
                 Selection
               </span>
               {openMenu === "selection" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Select All</span>
-                      <span className="text-[#858585]">Ctrl+A</span>
+                      <span className="text-[#7a8a9e]">Ctrl+A</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Expand Selection</span>
-                      <span className="text-[#858585]">Shift+Alt+→</span>
+                      <span className="text-[#7a8a9e]">Shift+Alt+→</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Shrink Selection</span>
-                      <span className="text-[#858585]">Shift+Alt+←</span>
+                      <span className="text-[#7a8a9e]">Shift+Alt+←</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Copy Line Up</span>
-                      <span className="text-[#858585]">Shift+Alt+↑</span>
+                      <span className="text-[#7a8a9e]">Shift+Alt+↑</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Copy Line Down</span>
-                      <span className="text-[#858585]">Shift+Alt+↓</span>
+                      <span className="text-[#7a8a9e]">Shift+Alt+↓</span>
                     </div>
                   </div>
                 </div>
@@ -382,7 +419,7 @@ function App() {
             {/* View Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("view");
@@ -391,31 +428,31 @@ function App() {
                 View
               </span>
               {openMenu === "view" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Command Palette...</span>
-                      <span className="text-[#858585]">Ctrl+Shift+P</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+P</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Explorer</span>
-                      <span className="text-[#858585]">Ctrl+Shift+E</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+E</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Search</span>
-                      <span className="text-[#858585]">Ctrl+Shift+F</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+F</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Source Control</span>
-                      <span className="text-[#858585]">Ctrl+Shift+G</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+G</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Terminal</span>
-                      <span className="text-[#858585]">Ctrl+`</span>
+                      <span className="text-[#7a8a9e]">Ctrl+`</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Toggle Full Screen</span>
                     </div>
                   </div>
@@ -426,7 +463,7 @@ function App() {
             {/* Go Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("go");
@@ -435,28 +472,28 @@ function App() {
                 Go
               </span>
               {openMenu === "go" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Back</span>
-                      <span className="text-[#858585]">Alt+←</span>
+                      <span className="text-[#7a8a9e]">Alt+←</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Forward</span>
-                      <span className="text-[#858585]">Alt+→</span>
+                      <span className="text-[#7a8a9e]">Alt+→</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Go to File...</span>
-                      <span className="text-[#858585]">Ctrl+P</span>
+                      <span className="text-[#7a8a9e]">Ctrl+P</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Go to Line...</span>
-                      <span className="text-[#858585]">Ctrl+G</span>
+                      <span className="text-[#7a8a9e]">Ctrl+G</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Go to Symbol...</span>
-                      <span className="text-[#858585]">Ctrl+Shift+O</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+O</span>
                     </div>
                   </div>
                 </div>
@@ -466,7 +503,7 @@ function App() {
             {/* Run Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("run");
@@ -475,24 +512,24 @@ function App() {
                 Run
               </span>
               {openMenu === "run" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Start Debugging</span>
-                      <span className="text-[#858585]">F5</span>
+                      <span className="text-[#7a8a9e]">F5</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Run Without Debugging</span>
-                      <span className="text-[#858585]">Ctrl+F5</span>
+                      <span className="text-[#7a8a9e]">Ctrl+F5</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Stop Debugging</span>
-                      <span className="text-[#858585]">Shift+F5</span>
+                      <span className="text-[#7a8a9e]">Shift+F5</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between">
                       <span>Restart Debugging</span>
-                      <span className="text-[#858585]">Ctrl+Shift+F5</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+F5</span>
                     </div>
                   </div>
                 </div>
@@ -502,7 +539,7 @@ function App() {
             {/* Terminal Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("terminal");
@@ -511,20 +548,26 @@ function App() {
                 Terminal
               </span>
               {openMenu === "terminal" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer flex justify-between">
+                    <div
+                      className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer flex justify-between"
+                      onClick={() => {
+                        setShowTerminal(true);
+                        setOpenMenu(null);
+                      }}
+                    >
                       <span>New Terminal</span>
-                      <span className="text-[#858585]">Ctrl+Shift+`</span>
+                      <span className="text-[#7a8a9e]">Ctrl+Shift+`</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Split Terminal</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Run Task...</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Run Build Task...</span>
                     </div>
                   </div>
@@ -535,7 +578,7 @@ function App() {
             {/* Help Menu */}
             <div className="relative">
               <span
-                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a2d2e] rounded"
+                className="hover:text-white cursor-pointer px-2 py-1 hover:bg-[#2a3441] rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleMenu("help");
@@ -544,23 +587,23 @@ function App() {
                 Help
               </span>
               {openMenu === "help" && (
-                <div className="absolute top-full left-0 mt-1 bg-[#252526] border border-[#454545] shadow-lg min-w-[200px] text-xs z-50">
+                <div className="absolute top-full left-0 mt-1 bg-[#1e242e] border border-[#2d3440] shadow-lg min-w-[200px] text-xs z-50">
                   <div className="py-1">
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Welcome</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Documentation</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Show All Commands</span>
                     </div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>Keyboard Shortcuts Reference</span>
                     </div>
-                    <div className="border-t border-[#454545] my-1"></div>
-                    <div className="px-3 py-1.5 hover:bg-[#2a2d2e] cursor-pointer">
+                    <div className="border-t border-[#2d3440] my-1"></div>
+                    <div className="px-3 py-1.5 hover:bg-[#2a3441] cursor-pointer">
                       <span>About</span>
                     </div>
                   </div>
@@ -573,39 +616,39 @@ function App() {
         {/* Center Section - Navigation & Search */}
         <div className="flex-1 flex items-center justify-center gap-2 px-4 non-draggable-area">
           <div className="flex items-center gap-1">
-            <button className="p-1 hover:bg-[#2a2d2e] rounded text-[#858585] hover:text-white">
+            <button className="p-1 hover:bg-[#2a3441] rounded text-[#7a8a9e] hover:text-white">
               <VscChevronLeft className="w-3 h-3" />
             </button>
-            <button className="p-1 hover:bg-[#2a2d2e] rounded text-[#858585] hover:text-white">
+            <button className="p-1 hover:bg-[#2a3441] rounded text-[#7a8a9e] hover:text-white">
               <VscChevronRight className="w-3 h-3" />
             </button>
           </div>
 
-          <div className="flex items-center bg-[#3c3c3c] rounded px-3 py-0.5 max-w-md w-full">
-            <VscSearch className="w-3 h-3 text-[#858585] mr-2" />
+          <div className="flex items-center bg-[#1e242e] border border-[#2d3440] rounded px-3 py-0.5 max-w-md w-full">
+            <VscSearch className="w-3 h-3 text-[#7a8a9e] mr-2" />
             <input
               type="text"
               placeholder="arcosys-code-editor"
-              className="bg-transparent text-xs text-[#cccccc] outline-none flex-1 placeholder-[#858585]"
+              className="bg-transparent text-xs text-[#cccccc] outline-none flex-1 placeholder-[#7a8a9e]"
             />
           </div>
         </div>
 
         {/* Right Section - Icons & Window Controls */}
         <div className="flex items-center gap-1 pr-2 non-draggable-area">
-          <button className="p-1 hover:bg-[#2a2d2e] rounded text-[#858585] hover:text-white">
+          <button className="p-1 hover:bg-[#2a3441] rounded text-[#7a8a9e] hover:text-white">
             <VscAccount className="w-4 h-4" />
           </button>
-          <button className="p-1 hover:bg-[#2a2d2e] rounded text-[#858585] hover:text-white">
+          <button className="p-1 hover:bg-[#2a3441] rounded text-[#7a8a9e] hover:text-white">
             <VscSettingsGear className="w-4 h-4" />
           </button>
 
           {/* Window Controls */}
           <div className="flex items-center ml-2">
-            <button className="p-1 hover:bg-[#2a2d2e] w-11 h-8 flex items-center justify-center">
+            <button className="p-1 hover:bg-[#2a3441] w-11 h-8 flex items-center justify-center">
               <VscChromeMinimize className="w-3 h-3" />
             </button>
-            <button className="p-1 hover:bg-[#2a2d2e] w-11 h-8 flex items-center justify-center">
+            <button className="p-1 hover:bg-[#2a3441] w-11 h-8 flex items-center justify-center">
               <VscChromeMaximize className="w-3 h-3" />
             </button>
             <button className="p-1 hover:bg-[#e81123] hover:text-white w-11 h-8 flex items-center justify-center">
@@ -620,11 +663,14 @@ function App() {
         {/* Sidebar */}
         <aside className="flex h-full shrink-0">
           {/* Activity Bar */}
-          <ActivityBar />
+          <ActivityBar activeView={activeView} onViewChange={setActiveView} />
 
           {/* Side Panel with Resize Handle */}
           <SidePanel
             width={sidePanelWidth}
+            activeView={activeView}
+            rootFolderPath={rootFolderPath}
+            onFolderOpen={setRootFolderPath}
             onFileClick={handleFileClick}
             onFileDelete={handleFileDelete}
             onMouseDown={handleLeftMouseDown}
@@ -636,9 +682,14 @@ function App() {
           openFiles={openFiles}
           activeFile={activeFile}
           fileContents={fileContents}
-          onTabClick={handleTabClick}
+          onTabClick={handleFileClick}
           onCloseTab={handleCloseTab}
           getLanguage={getLanguage}
+          showTerminal={showTerminal}
+          onCloseTerminal={() => setShowTerminal(false)}
+          terminalHeight={terminalHeight}
+          onTerminalResize={handleTerminalMouseDown}
+          rootFolderPath={rootFolderPath}
         />
 
         {/* Right Sidebar with Resize Handle */}

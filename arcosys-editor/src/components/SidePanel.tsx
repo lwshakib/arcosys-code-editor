@@ -1,4 +1,5 @@
 import { ExplorerPane } from "./ExplorerPane";
+import { SearchPane } from "./SearchPane";
 
 interface FileNode {
   name: string;
@@ -9,6 +10,9 @@ interface FileNode {
 
 interface SidePanelProps {
   width: number;
+  activeView: "explorer" | "search";
+  rootFolderPath: string | null;
+  onFolderOpen: (path: string | null) => void;
   onFileClick: (file: FileNode) => void;
   onFileDelete: (path: string) => void;
   onMouseDown: () => void;
@@ -16,6 +20,9 @@ interface SidePanelProps {
 
 export const SidePanel = ({
   width,
+  activeView,
+  rootFolderPath,
+  onFolderOpen,
   onFileClick,
   onFileDelete,
   onMouseDown,
@@ -27,7 +34,16 @@ export const SidePanel = ({
         className="bg-[#181D27] h-full rounded-md non-draggable-area"
         style={{ width: `${width}px` }}
       >
-        <ExplorerPane onFileClick={onFileClick} onFileDelete={onFileDelete} />
+        {activeView === "explorer" ? (
+          <ExplorerPane
+            onFileClick={onFileClick}
+            onFileDelete={onFileDelete}
+            onFolderOpen={onFolderOpen}
+            rootFolderPath={rootFolderPath}
+          />
+        ) : (
+          <SearchPane onFileClick={onFileClick} rootPath={rootFolderPath} />
+        )}
       </div>
 
       {/* Resize Handle */}

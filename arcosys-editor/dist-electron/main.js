@@ -1724,24 +1724,14 @@ function watch(paths, options = {}) {
   return watcher2;
 }
 const chokidar = { watch, FSWatcher };
-createRequire(import.meta.url);
+const require$1 = createRequire(import.meta.url);
 const __dirname$1 = sp__default.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = sp__default.join(__dirname$1, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const MAIN_DIST = sp__default.join(process.env.APP_ROOT, "dist-electron");
 const RENDERER_DIST = sp__default.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? sp__default.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-const IGNORED_DIRS = [
-  "node_modules",
-  ".git",
-  "dist",
-  ".next",
-  "out",
-  "build",
-  "env",
-  "venv",
-  "dist-electron"
-];
+const IGNORED_DIRS = [];
 function readDirRecursively(dirPath) {
   const baseName = sp__default.basename(dirPath);
   if (IGNORED_DIRS.includes(baseName)) return null;
@@ -1770,13 +1760,7 @@ const startWatching = (folderPath) => {
     watcher.close();
   }
   watcher = chokidar.watch(folderPath, {
-    ignored: [
-      /(^|[\/\\])\../,
-      "**/node_modules/**",
-      "**/.git/**",
-      "**/dist/**",
-      "**/build/**"
-    ],
+    ignored: [],
     persistent: true,
     ignoreInitial: true
   });
@@ -1907,7 +1891,155 @@ ipcMain.handle("fs:readDirRecursively", async (_, fullPath) => {
     return null;
   }
 });
+ipcMain.handle(
+  "fs:search",
+  async (_, query, options, rootPath) => {
+    try {
+      if (!rootPath) {
+        return [];
+      }
+      const results = [];
+      const { caseSensitive, wholeWord, useRegex } = options || {};
+      let searchPattern;
+      if (useRegex) {
+        try {
+          searchPattern = new RegExp(query, caseSensitive ? "g" : "gi");
+        } catch {
+          return [];
+        }
+      } else {
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const pattern = wholeWord ? `\\b${escapedQuery}\\b` : escapedQuery;
+        searchPattern = new RegExp(pattern, caseSensitive ? "g" : "gi");
+      }
+      const searchInDirectory = (dirPath) => {
+        try {
+          const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+          for (const entry of entries) {
+            const fullPath = sp__default.join(dirPath, entry.name);
+            if (entry.isDirectory()) {
+              if (IGNORED_DIRS.includes(entry.name)) continue;
+              searchInDirectory(fullPath);
+            } else if (entry.isFile()) {
+              const matches = [];
+              let nameMatched = false;
+              if (entry.name.match(searchPattern)) {
+                nameMatched = true;
+              }
+              const ext = sp__default.extname(entry.name).toLowerCase();
+              const binaryExts = [
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".ico",
+                ".pdf",
+                ".zip",
+                ".exe"
+              ];
+              if (!binaryExts.includes(ext)) {
+                try {
+                  const content = fs.readFileSync(fullPath, "utf8");
+                  const lines = content.split("\n");
+                  lines.forEach((line, index) => {
+                    const lineMatches = [...line.matchAll(searchPattern)];
+                    lineMatches.forEach((match) => {
+                      if (match.index !== void 0) {
+                        matches.push({
+                          line: index + 1,
+                          content: line.trim(),
+                          matchStart: match.index,
+                          matchEnd: match.index + match[0].length
+                        });
+                      }
+                    });
+                  });
+                } catch (err) {
+                }
+              }
+              if (nameMatched || matches.length > 0) {
+                results.push({
+                  filePath: fullPath,
+                  fileName: entry.name,
+                  matches: matches.slice(0, 100),
+                  nameMatched
+                });
+              }
+            }
+          }
+        } catch (err) {
+        }
+      };
+      searchInDirectory(rootPath);
+      results.sort((a, b) => {
+        if (a.nameMatched && !b.nameMatched) return -1;
+        if (!a.nameMatched && b.nameMatched) return 1;
+        return a.fileName.localeCompare(b.fileName);
+      });
+      return results;
+    } catch (error) {
+      console.error("Search error:", error);
+      return [];
+    }
+  }
+);
+const pty = require$1("node-pty");
+const os = require$1("os");
+let ptyProcess = null;
+ipcMain.on("terminal:start", (event, workspacePath) => {
+  console.log("Terminal starting in:", workspacePath);
+  const shell2 = os.platform() === "win32" ? "powershell.exe" : "bash";
+  try {
+    if (ptyProcess) {
+      console.log("Killing existing terminal process");
+      ptyProcess.kill();
+    }
+    ptyProcess = pty.spawn(shell2, [], {
+      name: "xterm-color",
+      cols: 80,
+      rows: 24,
+      cwd: workspacePath || os.homedir(),
+      env: process.env
+    });
+    console.log("Terminal process spawned PID:", ptyProcess.pid);
+    ptyProcess.onData((data) => {
+      event.sender.send("terminal:data", data);
+    });
+    ptyProcess.onExit(({ exitCode, signal }) => {
+      console.log(
+        "Terminal process exited with code:",
+        exitCode,
+        "signal:",
+        signal
+      );
+      event.sender.send("terminal:exit", { exitCode, signal });
+      ptyProcess = null;
+    });
+  } catch (err) {
+    console.error("Failed to spawn terminal:", err);
+  }
+});
+ipcMain.on("terminal:write", (_, data) => {
+  if (ptyProcess) {
+    ptyProcess.write(data);
+  } else {
+    console.warn("Attempted to write to terminal but process is null");
+  }
+});
+ipcMain.on("terminal:resize", (_, { cols, rows }) => {
+  if (ptyProcess) {
+    ptyProcess.resize(cols, rows);
+  }
+});
 app.whenReady().then(createWindow);
+app.on("window-all-closed", () => {
+  if (ptyProcess) {
+    ptyProcess.kill();
+  }
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,

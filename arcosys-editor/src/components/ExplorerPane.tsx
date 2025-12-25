@@ -254,17 +254,17 @@ const ContextMenu = ({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-[#252526] border border-[#454545] shadow-lg py-1 min-w-[220px] rounded-[4px] text-[#cccccc] font-sans"
+      className="fixed z-50 bg-[#1e242e] border border-[#2d3440] shadow-lg py-1 min-w-[220px] rounded-[4px] text-[#cccccc] font-sans"
       style={{ left: x, top: y }}
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item, i) =>
         item.type === "separator" ? (
-          <div key={i} className="h-[1px] bg-[#454545] my-1 mx-1" />
+          <div key={i} className="h-[1px] bg-[#2d3440] my-1 mx-1" />
         ) : (
           <div
             key={i}
-            className={`flex items-center px-3 py-1.5 cursor-pointer text-[13px] hover:bg-[#094771] hover:text-white transition-colors ${
+            className={`flex items-center px-3 py-1.5 cursor-pointer text-[13px] hover:bg-[#2a3441] hover:text-white transition-colors ${
               item.disabled ? "opacity-40 pointer-events-none" : ""
             } ${item.className || ""}`}
             onClick={() => {
@@ -358,7 +358,7 @@ const FileTreeItem = ({
     <div>
       <div
         className={`flex items-center py-0.5 cursor-pointer text-[#cccccc] hover:text-white transition-colors ${
-          isSelected ? "bg-[#37373d]" : "hover:bg-[#2a2d2e]"
+          isSelected ? "bg-[#2a3441]" : "hover:bg-[#2a3441]"
         }`}
         style={{ paddingLeft: `${paddingLeft}px` }}
         onClick={handleClick}
@@ -445,9 +445,13 @@ const FileTreeItem = ({
 export const ExplorerPane = ({
   onFileClick,
   onFileDelete,
+  onFolderOpen,
+  rootFolderPath,
 }: {
   onFileClick: (node: FileNode) => void;
   onFileDelete: (path: string) => void;
+  onFolderOpen?: (path: string | null) => void;
+  rootFolderPath?: string | null;
 }) => {
   const [isSectionExpanded, setIsSectionExpanded] = useState(true);
   const [folderData, setFolderData] = useState<FileNode | null>(null);
@@ -477,12 +481,33 @@ export const ExplorerPane = ({
     folderPathRef.current = folderData?.path || null;
   }, [folderData]);
 
+  /* 
+    Initialize folder data from props if available and no local data.
+    This ensures that when switching back from Search view, the folder structure is preserved.
+  */
+  useEffect(() => {
+    if (rootFolderPath && !folderData) {
+      // Re-fetch the data for the persistent path
+      window.ipcRenderer
+        .invoke("fs:readDirRecursively", rootFolderPath)
+        .then((data) => {
+          if (data) {
+            setFolderData(data);
+            setIsSectionExpanded(true);
+          }
+        });
+    }
+  }, [rootFolderPath, folderData]);
+
   const handleOpenFolder = async () => {
     const data = await window.ipcRenderer.invoke("dialog:openFolder");
     if (data) {
       setFolderData(data);
       setIsSectionExpanded(true);
       setActivePath(null);
+      if (onFolderOpen) {
+        onFolderOpen(data.path);
+      }
     }
   };
 
@@ -673,7 +698,7 @@ export const ExplorerPane = ({
       {folderData ? (
         <div className="flex-1 overflow-y-auto">
           <div
-            className="group flex items-center justify-between px-1 py-1 cursor-pointer font-bold text-[#bbbbbb] hover:bg-[#FFFFFF10] shrink-0 transition-colors uppercase"
+            className="group flex items-center justify-between px-1 py-1 cursor-pointer font-bold text-[#bbbbbb] hover:bg-[#2a3441] shrink-0 transition-colors uppercase"
             onClick={(e) => {
               e.stopPropagation();
               setIsSectionExpanded(!isSectionExpanded);
@@ -788,7 +813,7 @@ export const ExplorerPane = ({
       ) : (
         <>
           <div
-            className="flex items-center px-1 py-1 cursor-pointer font-bold text-white hover:bg-[#FFFFFF10] shrink-0 transition-colors"
+            className="flex items-center px-1 py-1 cursor-pointer font-bold text-white hover:bg-[#2a3441] shrink-0 transition-colors"
             onClick={() => setIsSectionExpanded(!isSectionExpanded)}
           >
             <VscChevronDown

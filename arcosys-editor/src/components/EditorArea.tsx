@@ -1,6 +1,7 @@
 import Editor from "@monaco-editor/react";
 import { VscChromeClose } from "react-icons/vsc";
 import { getIcon } from "../utils/icons";
+import { TerminalPane } from "./TerminalPane";
 
 interface FileNode {
   name: string;
@@ -16,6 +17,11 @@ interface EditorAreaProps {
   onTabClick: (file: FileNode) => void;
   onCloseTab: (e: React.MouseEvent, path: string) => void;
   getLanguage: (fileName: string) => string;
+  showTerminal: boolean;
+  onCloseTerminal: () => void;
+  terminalHeight: number;
+  onTerminalResize: () => void;
+  rootFolderPath: string | null;
 }
 
 export const EditorArea = ({
@@ -25,9 +31,14 @@ export const EditorArea = ({
   onTabClick,
   onCloseTab,
   getLanguage,
+  showTerminal,
+  onCloseTerminal,
+  terminalHeight,
+  onTerminalResize,
+  rootFolderPath,
 }: EditorAreaProps) => {
   return (
-    <main className="flex-1 bg-[#181D27] rounded-md overflow-hidden flex flex-col min-w-0">
+    <main className="flex-1 bg-[#181D27] rounded-md overflow-hidden flex flex-col min-w-0 h-full">
       {openFiles.length > 0 ? (
         <div className="flex-1 flex flex-col">
           {/* Tab Bar */}
@@ -111,6 +122,21 @@ export const EditorArea = ({
             <p>Select a file to start editing</p>
           </div>
         </div>
+      )}
+
+      {showTerminal && (
+        <>
+          {/* Terminal Resize Handle */}
+          <div
+            className="h-1 w-full cursor-row-resize hover:bg-[#3794ff] transition-colors z-20"
+            onMouseDown={onTerminalResize}
+          />
+          <TerminalPane
+            onClose={onCloseTerminal}
+            workspacePath={rootFolderPath}
+            height={terminalHeight}
+          />
+        </>
       )}
     </main>
   );

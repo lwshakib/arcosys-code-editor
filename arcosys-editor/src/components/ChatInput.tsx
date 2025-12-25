@@ -31,13 +31,13 @@ export const ChatInput = () => {
   };
 
   return (
-    <div className="p-4 border-t border-[#2a2d2e] bg-[#181D27]">
+    <div className="p-4 border-t border-[#2d3440] bg-[#181D27]">
       {/* Token Counter Banner */}
       <div className="mb-3">
         <div className="relative h-[26px]">
-          <div className="absolute top-0 left-0 flex w-full justify-between items-center rounded-t-lg border border-[#2a2d2e] bg-[#1e1e1e]/50 backdrop-blur px-3 py-1 text-xs">
-            <span className="text-[#858585]">150K daily tokens remaining.</span>
-            <button className="text-[#007fd4] font-semibold hover:underline bg-transparent">
+          <div className="absolute top-0 left-0 flex w-full justify-between items-center rounded-t-lg border border-[#2d3440] bg-[#1e242e]/50 backdrop-blur px-3 py-1 text-xs">
+            <span className="text-[#7a8a9e]">150K daily tokens remaining.</span>
+            <button className="text-[#3794ff] font-semibold hover:underline bg-transparent">
               Subscribe to Pro for 66x more usage
             </button>
           </div>
@@ -46,14 +46,14 @@ export const ChatInput = () => {
 
       {/* Input Container */}
       <div className="relative rounded-lg shadow-lg backdrop-blur">
-        <div className="flex flex-col rounded-lg border border-[#2a2d2e] bg-[#1e1e1e]/50 p-4">
+        <div className="flex flex-col rounded-lg border border-[#2d3440] bg-[#1e242e]/50 p-4">
           <textarea
             ref={textareaRef}
             value={message}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
             placeholder="How can ArcoSys help you today?"
-            className="w-full bg-transparent text-white placeholder-[#858585] resize-none outline-none text-sm mb-4"
+            className="w-full bg-transparent text-white placeholder-[#7a8a9e] resize-none outline-none text-sm mb-4"
             style={{ minHeight: "60px", maxHeight: "200px" }}
             rows={3}
           />
@@ -61,7 +61,7 @@ export const ChatInput = () => {
           {/* Action Buttons */}
           <div className="mt-auto flex gap-4">
             <button
-              className="text-[#858585] hover:text-white transition-colors"
+              className="text-[#7a8a9e] hover:text-white transition-colors"
               title="Attach file"
             >
               <VscAdd size={20} />
@@ -69,7 +69,7 @@ export const ChatInput = () => {
             <button
               onClick={handleSend}
               disabled={!message.trim()}
-              className="text-[#858585] hover:text-white disabled:text-[#4a4a4a] disabled:cursor-not-allowed transition-colors"
+              className="text-[#7a8a9e] hover:text-white disabled:text-[#4a4a4a] disabled:cursor-not-allowed transition-colors"
               title="Send with AI"
             >
               <VscSparkle size={20} />

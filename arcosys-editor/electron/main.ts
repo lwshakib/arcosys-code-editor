@@ -35,17 +35,7 @@ interface FileNode {
   children?: FileNode[];
 }
 
-const IGNORED_DIRS = [
-  "node_modules",
-  ".git",
-  "dist",
-  ".next",
-  "out",
-  "build",
-  "env",
-  "venv",
-  "dist-electron",
-];
+const IGNORED_DIRS: string[] = [];
 
 function readDirRecursively(dirPath: string): FileNode | null {
   const baseName = path.basename(dirPath);
@@ -84,13 +74,7 @@ const startWatching = (folderPath: string) => {
   }
 
   watcher = chokidar.watch(folderPath, {
-    ignored: [
-      /(^|[\/\\])\../,
-      "**/node_modules/**",
-      "**/.git/**",
-      "**/dist/**",
-      "**/build/**",
-    ],
+    ignored: [],
     persistent: true,
     ignoreInitial: true,
   });
@@ -252,4 +236,181 @@ ipcMain.handle("fs:readDirRecursively", async (_, fullPath) => {
   }
 });
 
+ipcMain.handle(
+  "fs:search",
+  async (_, query: string, options: any, rootPath?: string) => {
+    try {
+      if (!rootPath) {
+        return [];
+      }
+
+      const results: any[] = [];
+      const { caseSensitive, wholeWord, useRegex } = options || {};
+
+      let searchPattern: RegExp;
+      if (useRegex) {
+        try {
+          searchPattern = new RegExp(query, caseSensitive ? "g" : "gi");
+        } catch {
+          return [];
+        }
+      } else {
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const pattern = wholeWord ? `\\b${escapedQuery}\\b` : escapedQuery;
+        searchPattern = new RegExp(pattern, caseSensitive ? "g" : "gi");
+      }
+
+      const searchInDirectory = (dirPath: string) => {
+        try {
+          const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+          for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+
+            // Skip ignored directories
+            if (entry.isDirectory()) {
+              if (IGNORED_DIRS.includes(entry.name)) continue;
+              searchInDirectory(fullPath);
+            } else if (entry.isFile()) {
+              const matches: any[] = [];
+              let nameMatched = false;
+
+              // Check if filename matches
+              if (entry.name.match(searchPattern)) {
+                nameMatched = true;
+              }
+
+              // Search in file content (only if it's likely a text file)
+              const ext = path.extname(entry.name).toLowerCase();
+              const binaryExts = [
+                ".png",
+                ".jpg",
+                ".jpeg",
+                ".gif",
+                ".ico",
+                ".pdf",
+                ".zip",
+                ".exe",
+              ];
+              if (!binaryExts.includes(ext)) {
+                try {
+                  const content = fs.readFileSync(fullPath, "utf8");
+                  const lines = content.split("\n");
+
+                  lines.forEach((line, index) => {
+                    const lineMatches = [...line.matchAll(searchPattern)];
+                    lineMatches.forEach((match) => {
+                      if (match.index !== undefined) {
+                        matches.push({
+                          line: index + 1,
+                          content: line.trim(),
+                          matchStart: match.index,
+                          matchEnd: match.index + match[0].length,
+                        });
+                      }
+                    });
+                  });
+                } catch (err) {
+                  // Skip binary or unreadable files
+                }
+              }
+
+              if (nameMatched || matches.length > 0) {
+                results.push({
+                  filePath: fullPath,
+                  fileName: entry.name,
+                  matches: matches.slice(0, 100),
+                  nameMatched,
+                });
+              }
+            }
+          }
+        } catch (err) {
+          // Skip unreadable directories
+        }
+      };
+
+      searchInDirectory(rootPath);
+      // Sort results: put filename matches first, then sort by name
+      results.sort((a, b) => {
+        if (a.nameMatched && !b.nameMatched) return -1;
+        if (!a.nameMatched && b.nameMatched) return 1;
+        return a.fileName.localeCompare(b.fileName);
+      });
+
+      return results;
+    } catch (error: any) {
+      console.error("Search error:", error);
+      return [];
+    }
+  }
+);
+
+const pty = require("node-pty");
+const os = require("os");
+
+let ptyProcess: any = null;
+
+ipcMain.on("terminal:start", (event, workspacePath) => {
+  console.log("Terminal starting in:", workspacePath);
+  const shell = os.platform() === "win32" ? "powershell.exe" : "bash";
+
+  try {
+    if (ptyProcess) {
+      console.log("Killing existing terminal process");
+      ptyProcess.kill();
+    }
+
+    ptyProcess = pty.spawn(shell, [], {
+      name: "xterm-color",
+      cols: 80,
+      rows: 24,
+      cwd: workspacePath || os.homedir(),
+      env: process.env,
+    });
+
+    console.log("Terminal process spawned PID:", ptyProcess.pid);
+
+    ptyProcess.onData((data: string) => {
+      event.sender.send("terminal:data", data);
+    });
+
+    ptyProcess.onExit(({ exitCode, signal }: any) => {
+      console.log(
+        "Terminal process exited with code:",
+        exitCode,
+        "signal:",
+        signal
+      );
+      event.sender.send("terminal:exit", { exitCode, signal });
+      ptyProcess = null;
+    });
+  } catch (err) {
+    console.error("Failed to spawn terminal:", err);
+  }
+});
+
+ipcMain.on("terminal:write", (_, data) => {
+  if (ptyProcess) {
+    ptyProcess.write(data);
+  } else {
+    console.warn("Attempted to write to terminal but process is null");
+  }
+});
+
+ipcMain.on("terminal:resize", (_, { cols, rows }) => {
+  if (ptyProcess) {
+    ptyProcess.resize(cols, rows);
+  }
+});
+
 app.whenReady().then(createWindow);
+
+app.on("window-all-closed", () => {
+  if (ptyProcess) {
+    ptyProcess.kill();
+  }
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
