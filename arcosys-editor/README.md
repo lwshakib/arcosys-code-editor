@@ -1,30 +1,34 @@
-# React + TypeScript + Vite
+# Arcosys Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Arcosys Editor is an experimental agentic code editor designed to be more than just a text editor. It is an intelligent partner in the coding process, integrated with advanced AI capabilities.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Agentic Core**: The editor is built around an AI agentic core that can perform tasks, read context, and suggest improvements.
+- **Deep Integration**: Seamlessly connects with the Arcosys ecosystem, allowing for a unified development experience across web and terminal.
+- **AI-Enhanced IDE**: Standard features like HMR and ESLint are augmented with AI insights.
 
-## Expanding the ESLint configuration
+## 🛠️ Development
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+### Installation
 
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+```bash
+bun install
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+### Run Locally
+
+```bash
+bun run dev
+```
+
+## 🏗️ Technical Stack
+
+- **Frontend**: React + TypeScript + Vite
+- **Shell**: Electron (Integrated for desktop experience)
+- **Runtime**: Bun
+
+## 👤 Author
+
+**LW Shakib**
+- GitHub: [@lwshakib](https://github.com/lwshakib)

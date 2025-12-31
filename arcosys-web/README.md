@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Arcosys Web
 
-## Getting Started
+Arcosys Web is the agentic command center for your development workflow. It provides a rich, AI-powered interface for managing repositories, pull requests, and code generation.
 
-First, run the development server:
+## ✨ Key Features
+
+- **Agentic PR Management**: Let AI agents handle the heavy lifting of committing and managing pull requests.
+- **Contextual Chat**: Engage in deep conversations with your codebase to understand complex logic or plan new features.
+- **AI-Powered File Creation**: Bootstrap entire components or utility files with simple natural language instructions.
+- **Intelligent Assistance**: Get instant help with debugging, architectural advice, and code reviews.
+
+## 🛠️ Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh) (recommended) or Node.js (v18+)
+
+### Installation
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
+```
+
+### Development
+
+```bash
 bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🏗️ Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```mermaid
+graph LR
+    User -->|Interaction| UI[Next.js Interface]
+    UI -->|API Requests| Backend[Serverless Hooks / Inngest]
+    Backend -->|Agent Logic| AI[Agentic AI Engine]
+    AI -->|Code Execution| Repo[GitHub / Local Files]
+```
 
-## Learn More
+## 👤 Author
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**LW Shakib**
+- GitHub: [@lwshakib](https://github.com/lwshakib)
