@@ -14,17 +14,16 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String       @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean      @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   sessions      Session[]
   accounts      Account[]
   repositories  Repository[]
-
 
   @@unique([email])
   @@map("user")
@@ -78,44 +77,56 @@ model Verification {
   @@map("verification")
 }
 
-
-
 model Repository {
-  id        String   @id @default(cuid())
-  githubId  BigInt   @unique
-  name      String
-  owner     String
-  fullName  String
-  url       String
+  id       String @id @default(cuid())
+  githubId BigInt @unique
+  name     String
+  owner    String
+  fullName String
+  url      String
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reviews   Review[]
+  reviews Review[]
 
   @@index([userId])
   @@map("repository")
 }
 
-
 model Review {
-  id            String     @id @default(cuid())
-  repositoryId  String
-  repository    Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
 
-  prNumber      Int
-  prTitle       String
-  prUrl         String
-  review        String     @db.Text
+  prNumber Int
+  prTitle  String
+  prUrl    String
+  review   String @db.Text
 
-  status        String     @default("completed") // completed | failed | pending
+  status String @default("completed") // completed | failed | pending
 
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([repositoryId])
   @@map("review")
+}
+
+model DeviceCode {
+  id              String    @id
+  deviceCode      String
+  userCode        String
+  userId          String?
+  expiresAt       DateTime
+  status          String
+  lastPolledAt    DateTime?
+  pollingInterval Int?
+  clientId        String?
+  scope           String?
+
+  @@map("deviceCode")
 }
