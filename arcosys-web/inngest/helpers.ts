@@ -301,19 +301,23 @@ export async function getPullRequestDiff(
     pull_number: prNumber,
   });
 
-  const { data: diff } = await octokit.pulls.get({
-    owner,
-    repo,
-    pull_number: prNumber,
-    mediaType: {
-      format: "diff",
-    },
-  });
+  // Fetch the diff as a string using octokit.request with the correct header
+  const { data: diff } = await octokit.request(
+    "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+    {
+      owner,
+      repo,
+      pull_number: prNumber,
+      headers: {
+        accept: "application/vnd.github.v3.diff",
+      },
+    }
+  );
 
   return {
     title: pullRequest.title,
-    diff: diff,
-    description: pullRequest.body,
+    diff: diff as unknown as string,
+    description: pullRequest.body ?? "",
   };
 }
 

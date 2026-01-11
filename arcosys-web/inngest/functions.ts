@@ -8,9 +8,7 @@ import {
   postPullRequestComment,
   retrieveContext,
 } from "./helpers";
-import { generateText } from "ai";
-import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
-import { GOOGLE_API_KEY } from "@/lib/env";
+import { generateText, generateReviewPrompt } from "@/llm";
 
 /**
  * Inngest function that indexes a GitHub repository when connected.
@@ -104,64 +102,14 @@ export const generateReview = inngest.createFunction(
     });
 
     const review = await step.run("generate-ai-review", async () => {
-      const prompt = `
-You are an expert code reviewer. Analyze the following pull request and provide
-a detailed, constructive code review.
-
----
-
-### PR Title
-${title}
-
-### PR Description
-${description || "No description provided"}
-
----
-
-### Context from Codebase
-${context.join("\n\n")}
-
----
-
-### Code Changes
-${diff}
-
----
-
-Please provide the following sections in **Markdown** format:
-
-1. **Walkthrough**  
-   A file-by-file explanation of the changes.
-
-2. **Sequence Diagram**  
-   A Mermaid JS sequence diagram visualizing the flow of the changes (if applicable).
-
-   IMPORTANT:
-   - Use a \`\`\`mermaid code block
-   - Ensure valid Mermaid syntax
-   - Do NOT use special characters (quotes, braces, parentheses) inside notes or labels
-   - Keep the diagram simple
-
-3. **Summary**  
-   A brief overview of the pull request.
-
-4. **Strengths**  
-   What is done well in this change.
-
-5. **Issues**  
-   Bugs, security concerns, and code smells.
-
-6. **Suggestions**  
-   Specific, actionable improvements.
-
-7. **Poem**  
-   A short, creative poem summarizing the changes. Place this at the very end.
-`;
+      const prompt = generateReviewPrompt({
+        title,
+        description,
+        context,
+        diff,
+      });
 
       const { text } = await generateText({
-        model: createGoogleGenerativeAI({
-          apiKey: GOOGLE_API_KEY,
-        })("gemini-2.5-flash-lite"),
         prompt,
       });
 
