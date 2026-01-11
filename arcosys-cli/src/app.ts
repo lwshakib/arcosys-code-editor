@@ -1,5 +1,12 @@
 import { Command } from "commander";
 import { wakeCommand } from "./commands/wake.ts";
+import { configureCommand } from "./commands/configure.ts";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import chalk from "chalk";
+
+const TOKEN_FILE = path.join(os.homedir(), ".arcosys", "token.json");
 
 export class App {
   private program: Command;
@@ -16,9 +23,21 @@ export class App {
       .version("1.0.0");
 
     this.program
-      .command("wakeup")
-      .description("Start the interactive assistant")
-      .action(() => wakeCommand());
+      .command("configure")
+      .description("Configure and authenticate the CLI")
+      .action(async () => {
+        await configureCommand();
+      });
+
+    this.program
+      .action(() => {
+        if (!fs.existsSync(TOKEN_FILE)) {
+          console.log(chalk.yellow("\n⚠️  You are not authenticated."));
+          console.log(`Please run ${chalk.cyan("arcosys configure")} for the authentication.\n`);
+          return;
+        }
+        wakeCommand();
+      });
   }
 
   public async run() {
