@@ -35,6 +35,12 @@ export async function generateObject<T>({
     ),
     temperature: 0,
     tools,
+    maxSteps: 5,
+    onStepFinish: ({ toolCalls }) => {
+      toolCalls?.forEach((call) => {
+        console.log(`\n[Tool Call]: ${call.toolName}`);
+      });
+    },
   });
 
   return result;

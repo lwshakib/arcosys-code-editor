@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import chalk from "chalk";
 
-const CONFIG_DIR = path.join(os.homedir(), ".arcosys");
+const CONFIG_DIR = path.join(os.homedir(), ".arcosys-cli");
 const TOKEN_FILE = path.join(CONFIG_DIR, "token.json");
 
 export async function configureCommand() {

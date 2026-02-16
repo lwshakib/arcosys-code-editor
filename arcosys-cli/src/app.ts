@@ -6,7 +6,8 @@ import path from "node:path";
 import os from "node:os";
 import chalk from "chalk";
 
-const TOKEN_FILE = path.join(os.homedir(), ".arcosys", "token.json");
+const CONFIG_DIR = path.join(os.homedir(), ".arcosys-cli");
+const TOKEN_FILE = path.join(CONFIG_DIR, "token.json");
 
 export class App {
   private program: Command;
@@ -30,13 +31,33 @@ export class App {
       });
 
     this.program
-      .action(() => {
+      .action(async () => {
         if (!fs.existsSync(TOKEN_FILE)) {
           console.log(chalk.yellow("\n⚠️  You are not authenticated."));
           console.log(`Please run ${chalk.cyan("arcosys configure")} for the authentication.\n`);
           return;
         }
-        wakeCommand();
+
+        try {
+          const tokenData = JSON.parse(fs.readFileSync(TOKEN_FILE, "utf-8"));
+          const { sessionToken, expiresAt } = tokenData;
+
+          if (!sessionToken) {
+            throw new Error("No session token found");
+          }
+
+          // Check if token has expired locally
+          if (expiresAt && Date.now() > expiresAt) {
+            console.log(chalk.red("\n❌ Session expired."));
+            console.log(`Please run ${chalk.cyan("arcosys configure")} to re-authenticate.\n`);
+            return;
+          }
+
+          wakeCommand(sessionToken);
+        } catch (error) {
+          console.log(chalk.red("\n❌ Authentication error."));
+          console.log(`Please run ${chalk.cyan("arcosys configure")} for the authentication.\n`);
+        }
       });
   }
 
