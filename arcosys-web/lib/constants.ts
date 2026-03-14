@@ -1,0 +1,1 @@
+export const BGE_M3_EMBEDDING_BATCH_SIZE = 80;

@@ -6,9 +6,11 @@ import {
   getRepoFileContents,
   indexCodebase,
   postPullRequestComment,
+  createPullRequestReview,
   retrieveContext,
 } from "./helpers";
-import { generateText, REVIEW_PROMPT } from "@/llm";
+import { generateText, generateObject, PR_REVIEW_PROMPT, PR_SUMMARY_PROMPT } from "@/llm";
+import { z } from "zod";
 
 /**
  * Inngest function that indexes a GitHub repository when connected.
@@ -101,8 +103,7 @@ export const generateReview = inngest.createFunction(
       return retrieveContext(query, `${owner}/${repository}`);
     });
 
-    const review = await step.run("generate-ai-review", async () => {
-      const userPrompt = `
+    const userPrompt = `
 ### PR Title
 ${title}
 
@@ -120,18 +121,56 @@ ${context.join("\n\n")}
 ${diff}
 `;
 
+    const summary = await step.run("generate-summary", async () => {
       const { text } = await generateText({
         messages: [
-          { role: "system", content: REVIEW_PROMPT },
+          { role: "system", content: PR_SUMMARY_PROMPT },
           { role: "user", content: userPrompt },
         ],
       });
-
       return text;
     });
 
-    await step.run("post-gh-comment", async () => {
-      await postPullRequestComment(token, owner, repository, prNumber, review);
+    await step.run("post-summary-comment", async () => {
+      await postPullRequestComment(token, owner, repository, prNumber, summary);
+    });
+
+    const review = await step.run("generate-review-findings", async () => {
+      const { object } = await generateObject({
+        outputSchema: z.object({
+          overview: z.string().describe("Concise high-level summary of the review findings."),
+          findings: z.array(z.object({
+            path: z.string().describe("File path."),
+            line: z.number().describe("Line number in the final file version."),
+            priority: z.enum(["High Priority", "Medium Priority", "Low Priority"]),
+            explanation: z.string().describe("Description of the issue and its impact."),
+            suggestion: z.string().describe("Recommended fix or solution.")
+          }))
+        }),
+        messages: [
+          { role: "system", content: PR_REVIEW_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+      });
+      return object;
+    });
+
+    await step.run("post-review-feedback", async () => {
+      const reviewBody = `# Code Review\n\n${review.overview}`;
+      const inlineComments = review.findings.map((f: any) => ({
+        path: f.path,
+        line: f.line,
+        body: `**${f.priority}**\n\n${f.explanation}\n\n**Recommendation:**\n${f.suggestion}`,
+      }));
+
+      await createPullRequestReview(
+        token,
+        owner,
+        repository,
+        prNumber,
+        reviewBody,
+        inlineComments
+      );
     });
 
     await step.run("save-review-to-db", async () => {
@@ -146,7 +185,7 @@ ${diff}
             prNumber,
             prTitle: title,
             prUrl: `https://github.com/${owner}/${repository}/pull/${prNumber}`,
-            review: review,
+            review: JSON.stringify(review),
             status: "completed",
           },
         });

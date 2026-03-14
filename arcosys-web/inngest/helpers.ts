@@ -1,8 +1,7 @@
 import { PINECONE_INDEX } from "@/lib/env";
 import { Octokit } from "@octokit/rest";
 import { Pinecone as PineconeClient } from "@pinecone-database/pinecone";
-import { embed } from "ai";
-import { createGoogleGenerativeAI, google } from "@ai-sdk/google";
+import { generateEmbeddings, generateBatchEmbeddings } from "@/llm";
 import prisma from "@/lib/prisma";
 import { inngest } from "./client";
 
@@ -11,18 +10,11 @@ export const pinecone = new PineconeClient();
 export const pineconeIndex = pinecone.Index(PINECONE_INDEX!);
 
 /**
- * Generates an embedding vector for the given text using Google's
- * text-embedding-004 model.
+ * Generates an embedding vector for the given text using Cloudflare's
+ * BGE-M3 model.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const { embedding } = await embed({
-    model: createGoogleGenerativeAI({
-      apiKey: process.env.GOOGLE_API_KEY,
-    }).textEmbeddingModel("text-embedding-004"),
-    value: text,
-  });
-
-  return embedding;
+  return generateEmbeddings(text);
 }
 
 /**
@@ -125,25 +117,33 @@ export async function indexCodebase(
     };
   }[] = [];
 
-  for (const file of files) {
+  const preparedFiles = files.map((file) => {
     const contentWithHeader = `File: ${file.path}\n\n${file.content}`;
     const truncatedContent = contentWithHeader.slice(0, 8000);
+    return {
+      path: file.path,
+      truncatedContent,
+    };
+  });
 
-    try {
-      const embedding = await generateEmbedding(truncatedContent);
+  try {
+    const allContents = preparedFiles.map((f) => f.truncatedContent);
+    const results = await generateBatchEmbeddings(allContents);
 
+    results.forEach((embedding, index) => {
+      const file = preparedFiles[index];
       vectors.push({
         id: `${repoId}-${file.path.replace(/\//g, "_")}`,
         values: embedding,
         metadata: {
           repoId,
           path: file.path,
-          content: truncatedContent,
+          content: file.truncatedContent,
         },
       });
-    } catch (error) {
-      console.error(`Failed to embed file: ${file.path}`, error);
-    }
+    });
+  } catch (error) {
+    console.error(`Failed to generate embeddings for codebase: ${repoId}`, error);
   }
 
   if (vectors.length > 0) {
@@ -350,6 +350,43 @@ export async function postPullRequestComment(
 }
 
 /**
+ * Creates a formal GitHub review with a summary body and multiple inline comments.
+ *
+ * @param token - GitHub access token
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param prNumber - PR number
+ * @param body - High-level review summary
+ * @param comments - Array of inline comments on specific lines
+ */
+export async function createPullRequestReview(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  body: string,
+  comments: { path: string; line: number; body: string }[]
+) {
+  const octokit = new Octokit({
+    auth: token,
+  });
+
+  await octokit.pulls.createReview({
+    owner,
+    repo,
+    pull_number: prNumber,
+    body,
+    event: "COMMENT",
+    comments: comments.map((c) => ({
+      path: c.path,
+      line: c.line,
+      body: c.body,
+      side: "RIGHT",
+    })),
+  });
+}
+
+/**
  * Creates a webhook in the specified GitHub repository.
  *
  * @param token - GitHub access token
@@ -366,7 +403,7 @@ export async function createGithubWebhook(
   });
 
   // The URL where GitHub will send events.
-  const baseUrl = "https://4526f940c00d.ngrok-free.app";
+  const baseUrl = "https://1a2f-103-49-200-147.ngrok-free.app";
   const webhookUrl = `${baseUrl}/api/webhooks/github`;
 
   try {
