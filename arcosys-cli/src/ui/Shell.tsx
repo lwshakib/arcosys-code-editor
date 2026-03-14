@@ -65,18 +65,21 @@ const MessageList = memo(({ messages }: { messages: Message[] }) => {
   );
 });
 
-// Memoized input component to isolate its state
 const InputArea = memo(({ 
-  input, 
-  setInput, 
   onSubmit, 
   isProcessing 
 }: { 
-  input: string; 
-  setInput: (val: string) => void; 
   onSubmit: (val: string) => void; 
   isProcessing: boolean; 
 }) => {
+  const [localInput, setLocalInput] = useState("");
+
+  const handleInternalSubmit = (value: string) => {
+    if (isProcessing) return;
+    setLocalInput("");
+    onSubmit(value);
+  };
+
   return (
     <Box 
       borderStyle="round" 
@@ -88,9 +91,9 @@ const InputArea = memo(({
         <Text color="#8AB4F8">❯</Text>
       </Box>
       <TextInput
-        value={input}
-        onChange={setInput}
-        onSubmit={onSubmit}
+        value={localInput}
+        onChange={setLocalInput}
+        onSubmit={handleInternalSubmit}
         placeholder={isProcessing ? "Processing..." : "Type your message or @path/to/file"}
       />
     </Box>
@@ -99,7 +102,6 @@ const InputArea = memo(({
 
 export const AppUI = ({ sessionToken }: { sessionToken: string }) => {
   const { columns, rows } = useStdoutDimensions();
-  const [input, setInput] = useState("");
   const [isExiting, setIsExiting] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [cwd, setCwd] = useState(process.cwd());
@@ -153,7 +155,7 @@ export const AppUI = ({ sessionToken }: { sessionToken: string }) => {
     }
   };
 
-  const handleSubmit = async (value: string) => {
+  const handleSubmit = React.useCallback(async (value: string) => {
     if (value.toLowerCase() === "exit" || value.toLowerCase() === "/quit") {
       setIsExiting(true);
       return;
@@ -162,7 +164,6 @@ export const AppUI = ({ sessionToken }: { sessionToken: string }) => {
     if (value.trim() === "" || isProcessing) return;
 
     setIsProcessing(true);
-    setInput("");
 
     const currentMessages: Message[] = [
       ...messages,
@@ -250,7 +251,7 @@ export const AppUI = ({ sessionToken }: { sessionToken: string }) => {
     }
 
     setIsProcessing(false);
-  };
+  }, [messages, isProcessing, cwd, sessionToken]);
 
   if (isExiting) {
     return (
@@ -278,8 +279,6 @@ export const AppUI = ({ sessionToken }: { sessionToken: string }) => {
       <MessageList messages={messages} />
 
       <InputArea 
-        input={input} 
-        setInput={setInput} 
         onSubmit={handleSubmit} 
         isProcessing={isProcessing} 
       />
