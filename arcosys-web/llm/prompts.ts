@@ -32,40 +32,8 @@ Every field in the chosen tool's schema is REQUIRED, including the "thought" fie
 - \`{"tool": "end", "thought": "Task complete."}\`
 `;
 
-export function generateReviewPrompt({
-  title,
-  description,
-  context,
-  diff,
-}: {
-  title: string;
-  description: string;
-  context: string[];
-  diff: string;
-}) {
-  return `
-You are an expert code reviewer. Analyze the following pull request and provide
-a detailed, constructive code review.
-
----
-
-### PR Title
-${title}
-
-### PR Description
-${description || "No description provided"}
-
----
-
-### Context from Codebase
-${context.join("\n\n")}
-
----
-
-### Code Changes
-${diff}
-
----
+export const REVIEW_PROMPT = `
+You are an expert code reviewer. Analyze the provided pull request details (title, description, codebase context, and diff) and provide a detailed, constructive code review.
 
 Please provide the following sections in **Markdown** format:
 
@@ -96,4 +64,4 @@ Please provide the following sections in **Markdown** format:
 7. **Poem**  
    A short, creative poem summarizing the changes. Place this at the very end.
 `;
-}
+

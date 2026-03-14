@@ -8,7 +8,7 @@ import {
   postPullRequestComment,
   retrieveContext,
 } from "./helpers";
-import { generateText, generateReviewPrompt } from "@/llm";
+import { generateText, REVIEW_PROMPT } from "@/llm";
 
 /**
  * Inngest function that indexes a GitHub repository when connected.
@@ -102,15 +102,29 @@ export const generateReview = inngest.createFunction(
     });
 
     const review = await step.run("generate-ai-review", async () => {
-      const prompt = generateReviewPrompt({
-        title,
-        description,
-        context,
-        diff,
-      });
+      const userPrompt = `
+### PR Title
+${title}
+
+### PR Description
+${description || "No description provided"}
+
+---
+
+### Context from Codebase
+${context.join("\n\n")}
+
+---
+
+### Code Changes
+${diff}
+`;
 
       const { text } = await generateText({
-        messages: [{ role: "user", content: prompt }],
+        messages: [
+          { role: "system", content: REVIEW_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
       });
 
       return text;
