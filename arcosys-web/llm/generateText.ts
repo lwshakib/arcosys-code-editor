@@ -1,42 +1,73 @@
-import { generateText as aiGenerateText } from "ai";
-import { getModel, normalizeMessages } from "./model";
-import { tools } from "./tools";
 
 /**
- * Generates text using the AI model.
- * @param system - Optional system prompt.
- * @param messages - Optional array of messages.
- * @param prompt - Optional prompt string.
+ * GLM-4.7-Flash Comprehensive Implementation
+ * Based on Cloudflare Worker proxy documentation.
  */
+
 export async function generateText({
-  system,
   messages,
-  prompt,
+  temperature = 0,
+  max_tokens,
 }: {
-  system?: string;
-  messages?: any[];
-  prompt?: string;
+  messages: any[];
+  temperature?: number;
+  max_tokens?: number;
 }) {
-  const model = getModel();
+  const url = process.env.GLM_WORKER_URL;
+  const apiKey = process.env.CLOUDFLARE_API_KEY;
 
-  // Build the config based on whether messages or prompt is provided
-  const config = messages
-    ? {
-        model,
-        system,
-        messages: normalizeMessages(messages),
-        temperature: 0,
-        // tools,
+  if (!url) {
+    throw new Error("GLM_WORKER_URL is not defined in environment variables. Check your .env file.");
+  }
+
+  if (!apiKey) {
+    throw new Error("CLOUDFLARE_API_KEY is not defined in environment variables. Check your .env file.");
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        messages,
+        temperature,
+        max_tokens,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: errorText };
       }
-    : {
-        model,
-        system,
-        prompt: prompt || "",
-        temperature: 0,
-        // tools,
-      };
+      throw new Error(`GLM Worker Error (${response.status}): ${errorData.error || errorText}`);
+    }
 
-  const result = await aiGenerateText(config as any);
+    const data = await response.json();
 
-  return result;
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error("GLM Worker returned an empty response.");
+    }
+
+    const choice = data.choices[0];
+    const message = choice.message;
+    const text = message?.content || "";
+
+    return {
+      text,
+      finishReason: choice.finish_reason,
+      usage: data.usage,
+      raw: data,
+    };
+  } catch (error: any) {
+    console.error("[GLM generateText Error]:", error);
+    throw error;
+  }
 }

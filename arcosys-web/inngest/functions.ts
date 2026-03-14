@@ -110,7 +110,7 @@ export const generateReview = inngest.createFunction(
       });
 
       const { text } = await generateText({
-        prompt,
+        messages: [{ role: "user", content: prompt }],
       });
 
       return text;

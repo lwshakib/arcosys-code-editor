@@ -7,9 +7,11 @@ export async function POST(req: Request) {
     console.log(`[Agent] Calling model with ${messages.length} messages...`);
 
     const response = await generateObject({
-      schema: AgentStepSchema,
-      system: `${SYSTEM_PROMPT}\n\nCURRENT WORKING DIRECTORY: ${cwd}`,
-      messages,
+      outputSchema: AgentStepSchema,
+      messages: [
+        { role: "system", content: `${SYSTEM_PROMPT}\n\nCURRENT WORKING DIRECTORY: ${cwd}` },
+        ...messages
+      ],
     });
 
     return Response.json(response.object);
